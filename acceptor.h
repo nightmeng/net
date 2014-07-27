@@ -3,16 +3,20 @@
 
 #include "socket_base.h"
 
+class socket;
+class accept_request;
+
 class acceptor : public socket_base{
 	public:
-		typedef std::function<void (int, int)> acallback;
+		typedef std::function<void (socket&, int)> acallback;
 		acceptor();
 		~acceptor();
 
 		bool bind(unsigned short port);
+		bool listen();
 		bool accept(acallback callback);
 	private:
-		acceptor_request *req;
+		accept_request *a_req;
 };
 
 #endif

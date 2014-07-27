@@ -7,6 +7,7 @@
 #include <thread>
 #include <sys/socket.h>
 #include <cstring>
+#include <netinet/in.h>
 
 epoll::epoll():events(20000){
 	fd = epoll_create(20000);
@@ -170,6 +171,16 @@ inline void epoll::handle_accept_request(request_base *req, int events){
 	}
 
 	if(events & a_req->events() & EPOLLIN){
-		a_req->callback();
+		int error_code = 0;
+		struct sockaddr_in *addr = new struct sockaddr_in();
+		socklen_t len = sizeof(struct sockaddr);
+		int sock = ::accept(a_req->fd(), reinterpret_cast<struct sockaddr*>(addr), &len);
+
+		if(-1 == sock){
+			;
+		}
+
+		class socket s(sock, addr);
+		a_req->callback()(std::ref(s), error_code);
 	}
 }

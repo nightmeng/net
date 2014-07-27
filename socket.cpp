@@ -16,6 +16,12 @@ socket::socket():socket_base(){
 	epollor::instance()->get_epoll()->poll();
 }
 
+socket::socket(int sock, struct sockaddr_in *new_addr):socket_base(sock), addr(new_addr){
+	req = s_req = new socket_request(this);
+	epollor::instance()->get_epoll()->add_request(req);
+	epollor::instance()->get_epoll()->poll();
+}
+
 socket::~socket(){
 	epollor::instance()->get_epoll()->del_request(req);
 }
@@ -25,13 +31,14 @@ bool socket::connect(const std::string &host, unsigned short port){
 	if(nullptr == hostent){
 		return false;
 	}
-	struct sockaddr_in address;
-	address.sin_family = AF_INET;
-	address.sin_port = htons(port);
-	address.sin_addr = *((struct in_addr *)hostent->h_addr);
-	bzero(&address.sin_zero, sizeof(address.sin_zero));
+	addr = std::shared_ptr<struct sockaddr_in>(new struct sockaddr_in());
+	bzero(addr.get(), sizeof(struct sockaddr_in));
 
-	if(-1 == ::connect(fd, (struct sockaddr *)&address,
+	addr->sin_family = AF_INET;
+	addr->sin_port = htons(port);
+	addr->sin_addr = *((struct in_addr *)hostent->h_addr);
+
+	if(-1 == ::connect(fd, (struct sockaddr *)(addr.get()),
 				sizeof(struct sockaddr))){
 		return false;
 	}

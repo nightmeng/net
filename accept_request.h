@@ -3,14 +3,18 @@
 
 #include <functional>
 #include "request_base.h"
+#include "acceptor.h"
+
+class socket_base;
 
 class accept_request : public request_base{
 	public:
-		typedef std::function<void()> accept_icallback;
-		accept_icallback callback();
-		void callback(accept_icallback icallback);
+		accept_request(socket_base *sock);
+		acceptor::acallback callback();
+		void callback(acceptor::acallback cb);
+		int type()const;
 	private:
-		accept_icallback icb;
+		acceptor::acallback icb;
 };
 
 #endif
