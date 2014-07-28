@@ -4,6 +4,8 @@
 #include <functional>
 #include "request_base.h"
 
+namespace net{
+namespace tcp{
 class socket_base{
 	public:
 		friend class request_base;
@@ -18,5 +20,7 @@ class socket_base{
 		int fd;
 		request_base *req;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

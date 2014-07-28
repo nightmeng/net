@@ -2,7 +2,7 @@
 #include <iostream>
 
 int main(){
-	socket sock;
+	net::tcp::socket sock;
 	if(sock.connect("127.0.0.1", 1234)){
 		std::cout << "connect successfully" << std::endl;
 	}

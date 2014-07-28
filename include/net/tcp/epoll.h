@@ -7,6 +7,11 @@
 #include <thread>
 #include <atomic>
 
+struct epoll_event;
+
+namespace net{
+namespace tcp{
+
 class request_base;
 
 class epoll{
@@ -34,5 +39,7 @@ class epoll{
 		std::shared_ptr<std::thread> poller;
 		std::atomic<bool> polling;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

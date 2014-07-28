@@ -3,6 +3,9 @@
 
 #include <mutex>
 
+namespace net{
+namespace tcp{
+
 class socket_base;
 
 class request_base{
@@ -31,5 +34,7 @@ class request_base{
 		std::mutex lock;
 		int time;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

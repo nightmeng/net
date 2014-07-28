@@ -1,7 +1,9 @@
-#include "request_base.h"
-#include "socket_base.h"
+#include "net/tcp/request_base.h"
+#include "net/tcp/socket_base.h"
 
 #include <iostream>
+
+using namespace net::tcp;
 
 request_base::request_base(socket_base *sock):sb(sock), evs(0), time(-1){}
 

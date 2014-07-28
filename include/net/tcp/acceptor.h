@@ -3,6 +3,9 @@
 
 #include "socket_base.h"
 
+namespace net{
+namespace tcp{
+
 class socket;
 class accept_request;
 
@@ -18,5 +21,7 @@ class acceptor : public socket_base{
 	private:
 		accept_request *a_req;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

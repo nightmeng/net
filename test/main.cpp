@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main(){
-	socket sock;
+	net::tcp::socket sock;
 
 	if(!sock.connect("www.baidu.com", 80)){
 		std::cout << "connect failed" << std::endl;

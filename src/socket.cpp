@@ -1,14 +1,16 @@
-#include "socket.h"
-#include "epollor.h"
-#include "epoll.h"
+#include "net/tcp/socket.h"
+#include "net/tcp/epollor.h"
+#include "net/tcp/epoll.h"
+#include "net/tcp/socket_request.h"
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <cstring>
 #include <sys/epoll.h>
-#include "socket_request.h"
 
 #include <iostream>
+
+using namespace net::tcp;
 
 socket::socket():socket_base(){
 	req = s_req = new socket_request(this);

@@ -5,8 +5,12 @@
 #include <string>
 #include <memory>
 
-class socket_request;
 struct sockaddr_in;
+
+namespace net{
+namespace tcp{
+
+class socket_request;
 
 class socket : public socket_base{
 	public:
@@ -31,5 +35,8 @@ class socket : public socket_base{
 		socket_request *s_req;
 		std::shared_ptr<struct sockaddr_in> addr;
 };
+
+}/*tcp*/
+}/*net*/
 
 #endif

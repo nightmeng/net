@@ -1,14 +1,28 @@
-all:test/main test/server test/client
+all:out/lib/libnet.a out/examples/http
 
-test/main:
-	g++ -I . -g -o test/main test/main.cpp accept_request.cpp acceptor.cpp epoll.cpp epollor.cpp request_base.cpp socket_base.cpp socket.cpp socket_request.cpp -std=c++0x -pthread
+$(shell mkdir -p out/lib)
+$(shell mkdir -p out/examples)
 
-test/server:
-	g++ -I . -g -o test/server test/server.cpp accept_request.cpp acceptor.cpp epoll.cpp epollor.cpp request_base.cpp socket_base.cpp socket.cpp socket_request.cpp -std=c++0x -pthread
-	
-test/client:
-	g++ -I . -g -o test/client test/client.cpp accept_request.cpp acceptor.cpp epoll.cpp epollor.cpp request_base.cpp socket_base.cpp socket.cpp socket_request.cpp -std=c++0x -pthread
-	
-.PHONY:clean
+#libnet.a
+OBJS:=$(patsubst %.cpp, %.o, $(wildcard src/*.cpp))
+
+out/lib/libnet.a:${OBJS}
+	ar rcs $@ $^
+
+src/%.o:src/%.cpp
+	g++ -I include -std=c++0x -c -o $@ $<
+
+#http
+HTTP_OBJS:=$(patsubst %.cpp, %.o, $(wildcard examples/http/*.cpp))
+out/examples/http:${HTTP_OBJS}
+	g++ -o $@ $^ -std=c++0x -L out/lib/ -lnet -pthread
+
+examples/http/%.o:examples/http/%.cpp
+	g++ -I include -c -o $@ $< -std=c++0x
+
+.PHONY:clean dist-clean
 clean:
-	rm test/main test/server test/client
+	rm out/lib/libnet.a ${OBJS} out/examples/http ${HTTP_OBJS}
+
+dist-clean:
+	rm out -rf

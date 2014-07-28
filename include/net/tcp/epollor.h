@@ -4,6 +4,9 @@
 #include <memory>
 #include "epoll.h"
 
+namespace net{
+namespace tcp{
+
 class epollor{
 	public:
 		static std::shared_ptr<epollor> instance();
@@ -17,5 +20,7 @@ class epollor{
 		static std::shared_ptr<epollor> epor;
 		epoll *ep;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

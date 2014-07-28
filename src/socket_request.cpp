@@ -1,8 +1,10 @@
-#include "socket_request.h"
-#include "socket.h"
+#include "net/tcp/socket_request.h"
+#include "net/tcp/socket.h"
 #include <sys/epoll.h>
 
 #include <iostream>
+
+using namespace net::tcp;
 
 socket_request::socket_request(socket_base *sock)
 	:request_base(sock),

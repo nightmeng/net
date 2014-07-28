@@ -1,7 +1,7 @@
-#include "epoll.h"
-#include "request_base.h"
-#include "socket_request.h"
-#include "accept_request.h"
+#include "net/tcp/epoll.h"
+#include "net/tcp/request_base.h"
+#include "net/tcp/socket_request.h"
+#include "net/tcp/accept_request.h"
 #include <sys/epoll.h>
 #include <iostream>
 #include <thread>
@@ -9,11 +9,15 @@
 #include <cstring>
 #include <netinet/in.h>
 
+using namespace net::tcp;
+
 epoll::epoll():events(20000){
+	polling.store(false);
 	fd = epoll_create(20000);
 }
 
 epoll::epoll(int max):events(max){
+	polling.store(false);
 	fd = epoll_create(max);
 }
 

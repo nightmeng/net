@@ -1,5 +1,7 @@
-#include "accept_request.h"
-#include "socket_base.h"
+#include "net/tcp/accept_request.h"
+#include "net/tcp/socket_base.h"
+
+using namespace net::tcp;
 
 accept_request::accept_request(socket_base *sock):request_base(sock){
 }

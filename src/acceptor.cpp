@@ -1,14 +1,16 @@
-#include "acceptor.h"
-#include "socket.h"
-#include "epollor.h"
+#include "net/tcp/acceptor.h"
+#include "net/tcp/socket.h"
+#include "net/tcp/epollor.h"
+#include "net/tcp/accept_request.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
-#include "accept_request.h"
 #include <sys/epoll.h>
 #include <arpa/inet.h>
 
 #include <iostream>
+
+using namespace net::tcp;
 
 acceptor::acceptor():socket_base(){
 	req = a_req = new accept_request(this);

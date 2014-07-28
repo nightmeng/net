@@ -6,6 +6,8 @@
 #include <tuple>
 #include <functional>
 
+namespace net{
+namespace tcp{
 class socket_request : public request_base{
 	public:
 		enum mode:int{
@@ -42,5 +44,7 @@ class socket_request : public request_base{
 		mode imode;
 		mode omode;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

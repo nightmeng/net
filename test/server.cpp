@@ -5,7 +5,7 @@
 
 int main(){
 
-	acceptor a;
+	net::tcp::acceptor a;
 	
 	if(!a.bind(1234)){
 		std::cout << "bind error" << std::endl;
@@ -19,7 +19,7 @@ int main(){
 	}
 
 
-	a.accept([](socket &s, int c){
+	a.accept([](net::tcp::socket &s, int c){
 		std::cout << "accept" << std::endl;
 		s.sync_write(const_cast<char*>("Hello"), 5);
 	});

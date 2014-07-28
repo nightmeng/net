@@ -5,6 +5,9 @@
 #include "request_base.h"
 #include "acceptor.h"
 
+namespace net{
+namespace tcp{
+
 class socket_base;
 
 class accept_request : public request_base{
@@ -16,5 +19,7 @@ class accept_request : public request_base{
 	private:
 		acceptor::acallback icb;
 };
+}/*tcp*/
+}/*net*/
 
 #endif

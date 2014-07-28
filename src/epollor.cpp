@@ -1,5 +1,7 @@
-#include "epollor.h"
-#include "epoll.h"
+#include "net/tcp/epollor.h"
+#include "net/tcp/epoll.h"
+
+using namespace net::tcp;
 
 std::shared_ptr<epollor> epollor::epor(nullptr);
 
