@@ -48,15 +48,11 @@ bool socket::connect(const std::string &host, unsigned short port){
 			read_events |= ACCEPT;
 			std::unique_lock<std::mutex> locker(accept_event);
 			accept_cv.wait(locker);
-			read_events &= ~ACCEPT;
-
 			epollor::instance()->get_epoll()->update_request(this, events);
-			std::cout << "" << std::endl;
 
-			return true;
+			return accept_status;
 		}
 		else{
-			std::cout << "error" << std::endl;
 			std::cout << errno << std::endl;
 			return false;
 		}
@@ -104,7 +100,12 @@ void socket::async_read(void *buff, size_t length, read_callback rc){
 void socket::icallback(){
 	if(read_events & ACCEPT){
 		read_events &= ~ACCEPT;
-		accept_status = true;
+		int error;
+		socklen_t len = sizeof(error);
+		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+			accept_status = false;
+		}
+		accept_status = (error == 0);
 		accept_cv.notify_all();
 		return;
 	}
@@ -115,19 +116,9 @@ void socket::icallback(){
 	}
 	if(read_events & ASYNC){
 		read_events &= ~ASYNC;
-#if 0
-		int ret = read_some_noblock(read_buff, read_length);
-		int ec = 0;
-		if(rdcb != nullptr){
-			read_callback rc = rdcb;
-			rdcb = nullptr;
-			rc(ec, ret);
-		}
-#else
 		if(epollor::instance()->get_processor()->arrange(std::bind(&socket::read_proc, this))){
 			std::cerr << "full" << std::endl;
 		}
-#endif
 	}
 }
 
@@ -135,35 +126,29 @@ void socket::ocallback(){
 	if(read_events & ACCEPT){
 		epollor::instance()->get_epoll()->update_request(this, events);
 		read_events &= ~ACCEPT;
-		accept_status = true;
+		int error;
+		socklen_t len = sizeof(error);
+		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+			std::cerr << "error" << std::endl;
+			accept_status = false;
+		}
+		accept_status = (error == 0);
 		accept_cv.notify_all();
 		return;
 	}
 	if(write_events & SYNC){
 		epollor::instance()->get_epoll()->update_request(this, events);
-		std::cout << "out sync" << std::endl;
 		write_events &= ~SYNC;
 		//notify
 		sync_write_cv.notify_all();
 	}
 	if(write_events & ASYNC){
 		epollor::instance()->get_epoll()->update_request(this, events);
-		std::cout << "out async" << std::endl;
 		write_events &= ~ASYNC;
 
-#if 0
-		int ret = write_some_noblock(write_buff, write_length);
-		int ec = 0;
-		if(wrcb != nullptr){
-			write_callback wc = wrcb;
-			wrcb = nullptr;
-			wc(ec, ret);
-		}
-#else
 		if(epollor::instance()->get_processor()->arrange(std::bind(&socket::write_proc, this))){
 			std::cerr << "full" << std::endl;
 		}
-#endif
 	}
 }
 
@@ -171,6 +156,12 @@ void socket::ecallback(){
 	if(read_events & ACCEPT){
 		read_events &= ~ACCEPT;
 		accept_status = false;
+		int error;
+		socklen_t len = sizeof(error);
+		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+			accept_status = false;
+		}
+		accept_status = (error == 0);
 		accept_cv.notify_all();
 	}
 }
