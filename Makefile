@@ -1,28 +1,10 @@
-all:out/lib/libnet.a out/examples/http
+OBJS:=$(patsubst %.cpp, %.o, $(wildcard *.cpp))
+main:$(OBJS)
+	g++ -o $@ $^ -std=c++0x -pthread
 
-$(shell mkdir -p out/lib)
-$(shell mkdir -p out/examples)
+%.o:%.cpp
+	g++ -c -o $@ $< -I . -std=c++0x
 
-#libnet.a
-OBJS:=$(patsubst %.cpp, %.o, $(wildcard src/*.cpp))
-
-out/lib/libnet.a:${OBJS}
-	ar rcs $@ $^
-
-src/%.o:src/%.cpp
-	g++ -I include -std=c++0x -c -o $@ $<
-
-#http
-HTTP_OBJS:=$(patsubst %.cpp, %.o, $(wildcard examples/http/*.cpp))
-out/examples/http:${HTTP_OBJS}
-	g++ -o $@ $^ -std=c++0x -L out/lib/ -lnet -pthread
-
-examples/http/%.o:examples/http/%.cpp
-	g++ -I include -c -o $@ $< -std=c++0x
-
-.PHONY:clean dist-clean
+.PHONY:clean
 clean:
-	rm out/lib/libnet.a ${OBJS} out/examples/http ${HTTP_OBJS}
-
-dist-clean:
-	rm out -rf
+	rm *.o main

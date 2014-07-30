@@ -1,7 +1,0 @@
-net
-===
-
-A linux socket library with c++11
-
-* g++ 4.6.2
-* -std=c++0x
