@@ -14,6 +14,13 @@ socket_base::socket_base():events(EPOLLIN|EPOLLET){
 	epollor::instance()->get_epoll()->poll();
 }
 
+socket_base::socket_base(int fd)
+	:sock(fd), events(EPOLLIN|EPOLLET)
+{
+	epollor::instance()->get_epoll()->add_request(this, events);
+	epollor::instance()->get_epoll()->poll();
+}
+
 bool socket_base::set_noblock(){
 	int flags = fcntl(sock, F_GETFL, 0);
 	if(flags < 0){

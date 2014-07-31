@@ -13,19 +13,20 @@
 socket::socket()
 	:socket_base(), 
 	read_events(0), 
-	write_events(0) 
+	write_events(0),
+	accept_status(false)
 {
 	set_noblock();
 }
 
-socket::socket(int fd, std::shared_ptr<struct sockaddr_in> addr)
-	:socket_base(), read_events(AAAA), write_events(AAAA)
+socket::socket(int fd, std::shared_ptr<struct sockaddr_in> address)
+	:socket_base(fd), read_events(0), write_events(0), accept_status(true)
 {
+	addr = address;
 	set_noblock();
 }
 
 socket::~socket(){
-	std::cout << "~socket" << std::endl;
 }
 
 bool socket::update_addr(const std::string &host, unsigned short port){
@@ -54,13 +55,15 @@ bool socket::connect(const std::string &host, unsigned short port){
 	if(-1 == ::connect(sock, reinterpret_cast<struct sockaddr*>(addr.get()), 
 				sizeof(struct sockaddr))){
 		if(errno == EINPROGRESS){
-			read_events |= ACCEPT;
-			write_events |= ACCEPT;
 			std::unique_lock<std::mutex> locker(accept_event);
 			accept_cv.wait(locker);
 			epollor::instance()->get_epoll()->update_request(this, events);
+			if(accept_status.load()){
+				read_events |= CONNECTED;
+				write_events |= CONNECTED;
+			}
 
-			return accept_status;
+			return accept_status.load();
 		}
 		else{
 			std::cout << errno << std::endl;
@@ -68,7 +71,6 @@ bool socket::connect(const std::string &host, unsigned short port){
 		}
 	}
 
-	std::cout << "success" << std::endl;
 	return true;;
 }
 
@@ -82,7 +84,6 @@ int socket::sync_write(const void *buff, size_t length){
 }
 
 int socket::sync_read(void *buff, size_t length){
-	std::cout << "sync_read" << std::endl;
 	read_events |= SYNC;
 	std::unique_lock<std::mutex> locker(sync_write_event);
 	sync_read_cv.wait(locker);
@@ -97,7 +98,6 @@ void socket::async_write(const void *buff, size_t length, write_callback wc){
 	write_length = length;
 	write_events |= ASYNC;
 	epollor::instance()->get_epoll()->update_request(this, events|EPOLLOUT);;
-	std::cout << "<>" << (write_events&ASYNC) << std::endl;
 }
 
 void socket::async_read(void *buff, size_t length, read_callback rc){
@@ -109,15 +109,13 @@ void socket::async_read(void *buff, size_t length, read_callback rc){
 }
 
 void socket::icallback(){
-	if(read_events & ACCEPT){
-		read_events &= ~ACCEPT;
-		write_events &= ~ACCEPT;
+	if(!accept_status.load()){
 		int error;
 		socklen_t len = sizeof(error);
 		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-			accept_status = false;
+			accept_status.store(false);
 		}
-		accept_status = (error == 0);
+		accept_status.store(error == 0);
 		accept_cv.notify_all();
 		return;
 	}
@@ -135,19 +133,13 @@ void socket::icallback(){
 }
 
 void socket::ocallback(){
-	std::cout << "ocallback sock:" << sock << std::endl;
-	std::cout << "o" << (write_events & ASYNC) << std::endl;
-	if(write_events & ACCEPT){
-		epollor::instance()->get_epoll()->update_request(this, events);
-		read_events &= ~ACCEPT;
-		write_events &= ~ACCEPT;
+	if(!accept_status.load()){
 		int error;
 		socklen_t len = sizeof(error);
 		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-			std::cerr << "error" << std::endl;
-			accept_status = false;
+			accept_status.store(false);
 		}
-		accept_status = (error == 0);
+		accept_status.store(error == 0);
 		accept_cv.notify_all();
 		return;
 	}
@@ -169,17 +161,16 @@ void socket::ocallback(){
 }
 
 void socket::ecallback(){
-	if(read_events & ACCEPT){
-		read_events &= ~ACCEPT;
-		write_events &= ~ACCEPT;
-		accept_status = false;
+	if(!accept_status.load()){
 		int error;
 		socklen_t len = sizeof(error);
 		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-			accept_status = false;
+			accept_status.store(false);
 		}
-		accept_status = (error == 0);
-		accept_cv.notify_all();
+		if(!(read_events & CONNECTED)){
+			accept_status.store(error == 0);
+			accept_cv.notify_all();
+		}
 	}
 }
 
@@ -203,32 +194,21 @@ int socket::write_some_noblock(const void *buff, size_t len){
 	const unsigned char *u8_buff 
 		= reinterpret_cast<const unsigned char*>(buff);
 
-	std::cout << "write" << std::endl;
-	std::cout << "buff = " << buff << std::endl;
-	std::cout << "len = " << len << std::endl;
-	std::cout << reinterpret_cast<const char*>(buff) << std::endl;
 	int cnt = 0;
 	int nwrite = 0;
 	int left = len;
 	while(left > 0) {  
-		std::cout << "u8_buff " << u8_buff << std::endl;
-		std::cout << "cnt = " << cnt << std::endl;
-		std::cout << "left = " << left << std::endl;
 		int error;
 		socklen_t len = sizeof(error);
 		if(getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
 			accept_status = false;
 		}
-		std::cout << "error = " << error << std::endl;
 		nwrite = ::write(sock, u8_buff + cnt, left);  
-		//nwrite = ::send(sock, u8_buff+cnt, left, 0);
-		std::cout << "nwrite = " << nwrite << std::endl;
 		if(nwrite < left) {  
 			if(nwrite == -1 && errno != EAGAIN) {  
 				return -1;
 			}  
 		}  
-		std::cout << "nwrite = " << nwrite << std::endl;
 		left -= nwrite;  
 		cnt += nwrite;
 	}
@@ -246,10 +226,8 @@ void socket::read_proc(){
 }
 
 void socket::write_proc(){
-	std::cout << "write_proc" << std::endl;
 	int ret = write_some_noblock(write_buff, write_length);
 	int ec = 0;
-	std::cout << "ret = " << ret << std::endl;
 	if(wrcb != nullptr){
 		write_callback wc = wrcb;
 		wrcb = nullptr;

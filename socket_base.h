@@ -4,6 +4,7 @@
 class socket_base{
 	public:
 		explicit socket_base();
+		explicit socket_base(int fd);
 		virtual ~socket_base();
 
 		int fd();

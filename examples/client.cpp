@@ -12,12 +12,12 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
+	std::cout << "connect successfully" << std::endl;
+
 	char buff[2048] = {0};
 	sock.async_read(buff, 2048, [&sock, &buff](int t, int c){
 		std::cout << "recv from server: (" << t << "," << c << ")" << buff << std::endl;
-
-		const char *wel = "hello";
-		sock.sync_write(wel, 5);
+		sock.sync_write("hello", 5);
 	});
 
 	char c;

@@ -13,18 +13,14 @@ int main(int argc, char *argv[]){
 
 	char wel[] = "welcome";
 	char buff[2048] = {0};
-	std::shared_ptr<socket> s;
-	a.accept([&s](int ec, std::shared_ptr<socket> sock){
+	a.accept([&wel](int ec, std::shared_ptr<socket> sock){
 		std::cout << "accept: fd = " << sock->fd() << " error code = " << ec << std::endl;		
-		s = sock;
-	});
-
-
-		s->async_write(wel, 7, [s, &buff](int t, int c){
+		sock->async_write(wel, 7, [sock](int t, int c){
 			char buff[2048] = {0};
-			s->sync_read(buff, 2048);
+			sock->sync_read(buff, 2048);
 			std::cout << "recv from client: " << buff << std::endl; 
-			});
+		});
+	});
 
 	char c;
 	std::cin >> c;

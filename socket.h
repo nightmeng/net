@@ -7,6 +7,7 @@
 #include <functional>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 
 struct sockaddr_in;
 
@@ -46,8 +47,7 @@ class socket : public socket_base{
 			NONE = 0,
 			SYNC = 1,
 			ASYNC = 2,
-			ACCEPT = 4,
-			AAAA = 8
+			CONNECTED = 4
 		};
 		int read_events;
 		int write_events;
@@ -71,7 +71,7 @@ class socket : public socket_base{
 		std::mutex async_read_safe_mutex;
 		std::mutex async_write_safe_mutex;
 
-		bool accept_status;
+		std::atomic<bool> accept_status;
 };
 
 #endif
