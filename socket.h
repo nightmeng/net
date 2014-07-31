@@ -8,12 +8,15 @@
 #include <mutex>
 #include <condition_variable>
 
+struct sockaddr_in;
+
 class socket : public socket_base{
 	public:
 		typedef std::function<void(int, int)> write_callback;
 		typedef std::function<void(int, int)> read_callback;
 	public:
 		explicit socket();
+		explicit socket(int fd, std::shared_ptr<struct sockaddr_in> addr);
 		~socket();
 
 		bool connect(const std::string &host, unsigned short port);
@@ -43,7 +46,8 @@ class socket : public socket_base{
 			NONE = 0,
 			SYNC = 1,
 			ASYNC = 2,
-			ACCEPT = 4
+			ACCEPT = 4,
+			AAAA = 8
 		};
 		int read_events;
 		int write_events;

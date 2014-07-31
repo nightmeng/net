@@ -47,7 +47,7 @@ int main(){
 	char buff[1024*1024+1] = {0};
 	sock.async_write(const_cast<char*>(str), strlen(str), [&buff, &sock](int ec, int t){
 		std::cout << "write_handler" << ec <<  " " << t << std::endl;
-#if 0
+#if 1
 		sock.async_read(buff, 1024*1024, std::bind(handler_read, std::placeholders::_1, std::placeholders::_2, buff, std::ref(sock)));
 #else
 		sock.sync_read(buff, 1024*1024);

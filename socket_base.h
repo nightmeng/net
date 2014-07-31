@@ -11,6 +11,8 @@ class socket_base{
 		virtual void icallback(){}
 		virtual void ocallback(){}
 		virtual void ecallback(){}
+
+		bool set_noblock();
 		
 		socket_base(const socket_base &) = delete;
 		socket_base& operator=(const socket_base &) = delete;
