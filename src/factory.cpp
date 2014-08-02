@@ -1,12 +1,12 @@
-#include <net/processor.h>
+#include <net/factory.h>
 
-processor::processor(){
+factory::factory(){
 }
 
-processor::~processor(){
+factory::~factory(){
 }
 
-bool processor::arrange(std::function<void()> proc){
+bool factory::arrange(std::function<void()> proc){
 	for(auto i = 0; i != workers.size(); ++i){
 		if(workers[i]->task_once(proc)){
 			workers[i]->active();

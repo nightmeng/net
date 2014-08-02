@@ -13,11 +13,11 @@ epoll* epollor::get_epoll(){
 	return ep.get();
 }
 
-processor *epollor::get_processor(){
+factory *epollor::get_factory(){
 	return p.get();
 }
 
-epollor::epollor():ep(new epoll()), p(new processor()){
+epollor::epollor():ep(new epoll()), p(new factory()){
 }
 
 epollor::~epollor(){

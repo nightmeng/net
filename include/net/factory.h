@@ -5,10 +5,10 @@
 #include <vector>
 #include <memory>
 
-class processor{
+class factory{
 	public:
-		processor();
-		~processor();
+		factory();
+		~factory();
 
 		bool arrange(std::function<void()> proc);
 	private:

@@ -50,14 +50,14 @@ void acceptor::ievent(){
 				&len);
 		
 		if(fd > 0){
-			epollor::instance()->get_processor()->arrange(
+			epollor::instance()->get_factory()->arrange(
 					std::bind(acb, 0, std::shared_ptr<class socket>(
 							new class socket(fd, addr))));
 		}
 		else{
 			if(errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO
 					&& errno != EINTR){
-				epollor::instance()->get_processor()->arrange(
+				epollor::instance()->get_factory()->arrange(
 						std::bind(acb, errno, nullptr));
 				return;
 			}

@@ -2,19 +2,19 @@
 #define __EPOLLOR_H__
 
 #include <net/epoll.h>
-#include <net/processor.h>
+#include <net/factory.h>
 #include <memory>
 
 class epollor{
 	public:
 		static std::shared_ptr<epollor> instance();
 		epoll* get_epoll();
-		processor *get_processor();
+		factory *get_factory();
 		~epollor();
 	private:
 		epollor();
 		std::shared_ptr<epoll> ep;
-		std::shared_ptr<processor> p;
+		std::shared_ptr<factory> p;
 		static std::shared_ptr<epollor> ist;
 };
 
