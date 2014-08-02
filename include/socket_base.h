@@ -9,9 +9,9 @@ class socket_base{
 
 		int fd();
 
-		virtual void icallback(){}
-		virtual void ocallback(){}
-		virtual void ecallback(){}
+		virtual void ievent() = 0;
+		virtual void oevent() = 0;
+		virtual void eevent() = 0;
 
 		bool set_noblock();
 		

@@ -7,17 +7,15 @@
 
 #include <iostream>
 
-socket_base::socket_base():events(EPOLLIN|EPOLLET){
+socket_base::socket_base(){
 	sock = ::socket(AF_INET, SOCK_STREAM, 0);
 
-	epollor::instance()->get_epoll()->add_request(this, events);
+	epollor::instance()->get_epoll()->add_request(this, EPOLLOUT|EPOLLIN|EPOLLET);
 	epollor::instance()->get_epoll()->poll();
 }
 
-socket_base::socket_base(int fd)
-	:sock(fd), events(EPOLLIN|EPOLLET)
-{
-	epollor::instance()->get_epoll()->add_request(this, events);
+socket_base::socket_base(int fd):sock(fd){
+	epollor::instance()->get_epoll()->add_request(this, EPOLLOUT|EPOLLIN|EPOLLET);
 	epollor::instance()->get_epoll()->poll();
 }
 
@@ -35,7 +33,9 @@ bool socket_base::set_noblock(){
 }
 
 socket_base::~socket_base(){
+	epollor::instance()->get_epoll()->del_request(this);
 	close(sock);
+	std::cout << "~socket_base" << std::endl;
 }
 
 int socket_base::fd(){

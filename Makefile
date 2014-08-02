@@ -1,23 +1,14 @@
-OBJS:=$(patsubst %.cpp, %.o, $(wildcard *.cpp))
+LIBNET_OBJS:=$(patsubst %.cpp, %.o, $(wildcard src/*.cpp))
 
-all: examples/main examples/client examples/server
+$(shell mkdir -p lib)
 
-examples/main:examples/main.o libnet.a
-	g++ -g -o $@ $< -L . -lnet -pthread -I .
-
-examples/client:examples/client.o libnet.a
-	g++ -g -o $@ $< -L . -lnet -pthread -I .
-
-examples/server:examples/server.o libnet.a
-	g++ -g -o $@ $< -L . -lnet -pthread -I .
-
-libnet.a:$(OBJS)
-	ar rcs libnet.a $^
-
+lib/libnet.a:${LIBNET_OBJS}
+	ar rcs $@ $^
 
 %.o:%.cpp
-	g++ -g -c -o $@ $< -I . -std=c++0x
+	g++ -c -o $@ $< -std=c++0x -I include
+
 
 .PHONY:clean
 clean:
-	rm *.o libnet.a examples/main examples/server examples/client examples/*.o
+	rm src/*.o ./lib ./bin -rf

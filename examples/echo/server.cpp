@@ -1,31 +1,29 @@
 #include <acceptor.h>
 #include <iostream>
-#include <cstring>
-
-char buff[1024] = {0};
-
-void handler_read(int ec, int t, std::shared_ptr<socket> sock){
-	if(ec == 0){
-		sock->sync_write(buff, t);
-		bzero(buff, 1024);
-		sock->async_read(buff, 1024, std::bind(handler_read, std::placeholders::_1, std::placeholders::_2, sock));
-	}
-}
-
-void handle_accept(int ec, std::shared_ptr<socket> sock){
-	if(ec == 0){
-		sock->async_read(buff, 1024, std::bind(handler_read, std::placeholders::_1, std::placeholders::_2, sock));
-	}
-}
 
 int main(){
 	acceptor a;
 
-	a.bind("localhost", 3215);
+	if(!a.bind("localhost", 1234)){
+		std::cout << "bind port failed!" << std::endl;
+		return -1;
+	}
 
-	a.listen();
+	if(!a.listen()){
+		std::cout << "listen failed!" << std::endl;
+		return -2;
+	}
 
-	a.accept(handle_accept);
+	a.accept([](int ec, std::shared_ptr<socket> sock){
+		std::cout << "ec = " << ec << std::endl;
+
+		const char *wel = "welcome";
+		sock->sync_write(wel, 7);
+
+		char buff[2049] = {0};
+		sock->sync_read(buff, 2048);
+		std::cout << buff << std::endl;
+	});
 
 	char c;
 	std::cin >> c;

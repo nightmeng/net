@@ -3,7 +3,6 @@
 
 #include <mutex>
 #include <functional>
-#include <atomic>
 #include <memory>
 #include <thread>
 
@@ -12,15 +11,17 @@ class worker{
 		worker();
 		~worker();
 		void interrupt();
-		void start();
-		bool busy();
 		bool task(std::function<void()> job);
+		bool task_once(std::function<void()> job);
+		void active();
+		bool busy();
 	private:
 		void work();
 	private:
-		std::mutex single;
-		bool status;
+		std::mutex task_safe;
 		bool stop;
+		bool once;
+		bool onced;
 		std::timed_mutex mutex;
 		std::function<void()> proc;
 		std::shared_ptr<std::thread> thread;

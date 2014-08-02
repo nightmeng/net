@@ -55,15 +55,16 @@ void epoll::poll_service(){
 			}
 
 			if(ev.events & EPOLLERR){
-				sock->ecallback();
+				std::cout << "err" << std::endl;
+				sock->eevent();
 			}
-			else{
-				if(ev.events & EPOLLIN){
-					sock->icallback();
-				}
-				if(ev.events & EPOLLOUT){
-					sock->ocallback();
-				}
+			if(ev.events & EPOLLIN){
+				std::cout << "in" << std::endl;
+				sock->ievent();
+			}
+			if(ev.events & EPOLLOUT){
+				std::cout << "out" << std::endl;
+				sock->oevent();
 			}
 		}
 	}

@@ -4,25 +4,17 @@
 int main(){
 	socket sock;
 
-	if(!sock.connect("localhost", 3215)){
-		std::cout << "connect failed" << std::endl;
+	if(!sock.connect("localhost", 1234)){
+		std::cout << "connect failed!" << std::endl;
 		return -1;
 	}
 	std::cout << "connect successfully" << std::endl;
 
-	std::string content;
+	char buff[2049] = {0};
+	sock.sync_read(buff, 2048);
+	std::cout << "recv: " << buff << std::endl;
 
-	while(1){
-		std::cout << "[send]:";
-		std::cin >> content;
-		sock.async_write(content.c_str(), content.size(), [&sock](int ec, int t){
-			if(ec == 0){
-				char buff[1024] = {0};
-				sock.sync_read(buff, 1024);
-				std::cout << "[recv]:" << buff << std::endl;
-			}
-		});
-	}
+	sock.sync_write("hello", 5);
 
 	return 0;
 }
