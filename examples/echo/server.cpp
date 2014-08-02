@@ -1,6 +1,19 @@
 #include <acceptor.h>
 #include <iostream>
 
+char buff[2049] = {0};
+
+void handle_read(int ec, int t, std::shared_ptr<socket> sock){
+	if(ec == 0){
+		sock->sync_write(buff, t);
+		sock->async_read(buff, 2048, std::bind(handle_read, std::placeholders::_1,
+					std::placeholders::_2, sock));
+	}
+	else{
+		std::cerr << "async read error, errno = " << ec << std::endl;
+	}
+}
+
 int main(){
 	acceptor a;
 
@@ -15,14 +28,9 @@ int main(){
 	}
 
 	a.accept([](int ec, std::shared_ptr<socket> sock){
-		std::cout << "ec = " << ec << std::endl;
-
-		const char *wel = "welcome";
-		sock->sync_write(wel, 7);
-
-		char buff[2049] = {0};
-		sock->sync_read(buff, 2048);
-		std::cout << buff << std::endl;
+		std::cout << "accept a connection" << std::endl;
+		sock->async_read(buff, 2048, std::bind(handle_read, std::placeholders::_1,
+					std::placeholders::_2, sock));
 	});
 
 	char c;

@@ -12,14 +12,24 @@ class socket_base{
 		virtual void ievent() = 0;
 		virtual void oevent() = 0;
 		virtual void eevent() = 0;
+		virtual void prievent(){}
+		virtual void hupevent(){}
+		virtual void rdhupevent(){}
+
+		void close();
+	protected:
+		int open();
 
 		bool set_noblock();
+
+		void register_epoll_req();
+		void unregister_epoll_req();
 		
 		socket_base(const socket_base &) = delete;
 		socket_base& operator=(const socket_base &) = delete;
 	protected:
 		int sock;
-		int events;
+		bool epolled;
 };
 
 #endif

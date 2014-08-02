@@ -1,5 +1,6 @@
 #include <socket.h>
 #include <iostream>
+#include <string>
 
 int main(){
 	socket sock;
@@ -10,11 +11,18 @@ int main(){
 	}
 	std::cout << "connect successfully" << std::endl;
 
-	char buff[2049] = {0};
-	sock.sync_read(buff, 2048);
-	std::cout << "recv: " << buff << std::endl;
+	std::string msg;
+	while(true){
+		std::cout << "[send]: ";
+		std::cin >> msg;
 
-	sock.sync_write("hello", 5);
+		sock.sync_write(msg.c_str(), msg.size());
+
+		char buff[2049] = {0};
+		sock.sync_read(buff, 2048);
+
+		std::cout << "[recv]: " << buff << std::endl;
+	}
 
 	return 0;
 }

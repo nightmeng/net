@@ -32,11 +32,15 @@ class socket : public socket_base{
 		virtual void ievent();
 		virtual void oevent();
 		virtual void eevent();
+		virtual void rdhupevent();
 	private:
 		bool update_addr(const std::string &ip, unsigned short port);
 		void job(std::mutex &mutex, std::list<std::function<void()>> &requests);
 
-		void sync_action(std::condition_variable &cv);
+		void sync_rd_action(char *buff, size_t length, int &transfered,
+				std::condition_variable &cv);
+		void sync_wr_action(const char *buff, size_t length, int &transfered, 
+				std::condition_variable &cv);
 
 		void async_rd_action(char *buff, size_t length, icallback icb);
 		void async_wr_action(const char *buff, size_t length, ocallback ocb);
@@ -62,7 +66,8 @@ class socket : public socket_base{
 			PRECONNECT,
 			CONNECTING,
 			CONNECTED,
-			CONNECTERR
+			CONNECTERR,
+			DISCONNECTED
 		};
 
 		enum status connect_status;

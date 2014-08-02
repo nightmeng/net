@@ -54,17 +54,25 @@ void epoll::poll_service(){
 				continue;
 			}
 
-			if(ev.events & EPOLLERR){
-				std::cout << "err" << std::endl;
-				sock->eevent();
+			if(ev.events & EPOLLHUP){
+				sock->hupevent();
 			}
-			if(ev.events & EPOLLIN){
-				std::cout << "in" << std::endl;
-				sock->ievent();
-			}
-			if(ev.events & EPOLLOUT){
-				std::cout << "out" << std::endl;
-				sock->oevent();
+			else{
+				if(ev.events & EPOLLERR){
+					sock->eevent();
+				}
+				if(ev.events & EPOLLIN){
+					sock->ievent();
+				}
+				if(ev.events & EPOLLOUT){
+					sock->oevent();
+				}
+				if(ev.events & EPOLLRDHUP){
+					sock->rdhupevent();
+				}
+				if(ev.events & EPOLLPRI){
+					sock->prievent();
+				}
 			}
 		}
 	}

@@ -16,8 +16,6 @@ socket::socket():socket_base(), connect_status(PRECONNECT), wrable(false), rdabl
 				std::ref(rd_request)));
 	wr_worker.task(std::bind(&socket::job, this, std::ref(wr_mutex),
 				std::ref(wr_request)));
-
-	epollor::instance()->get_epoll()->poll();
 }
 
 socket::socket(int fd, std::shared_ptr<struct sockaddr_in> address)
@@ -27,8 +25,6 @@ socket::socket(int fd, std::shared_ptr<struct sockaddr_in> address)
 				std::ref(rd_request)));
 	wr_worker.task(std::bind(&socket::job, this, std::ref(wr_mutex),
 				std::ref(wr_request)));
-
-	epollor::instance()->get_epoll()->poll();
 }
 
 socket::~socket(){}
@@ -51,6 +47,11 @@ bool socket::update_addr(const std::string &host, unsigned short port){
 }
 
 bool socket::connect(const std::string &ip, unsigned short port){
+	if(-1 == sock){
+		open();
+		register_epoll_req();
+	}
+
 	if(!update_addr(ip, port)){
 		return false;
 	}
@@ -82,35 +83,39 @@ bool socket::connect(const std::string &ip, unsigned short port){
 }
 
 int socket::sync_write(const void *buff, size_t length){
+	int transfered = 0;
 	std::mutex sync_mutex;
 	std::unique_lock<std::mutex> locker(sync_mutex);
 	std::condition_variable cv;
 	{
 		std::lock_guard<std::mutex> locker(wr_mutex);
-		wr_request.push_back(std::bind(&socket::sync_action, this, 
+		wr_request.push_back(std::bind(&socket::sync_wr_action, this, 
+					reinterpret_cast<const char*>(buff), length, std::ref(transfered),
 					std::ref(cv)));
 		if(wrable)
 			wr_worker.active();
 	}
 	cv.wait(locker);
 	
-	return write_some(reinterpret_cast<const char*>(buff), length);
+	return transfered;
 }
 
 int socket::sync_read(void *buff, size_t length){
+	int transfered = 0;
 	std::mutex sync_mutex;
 	std::unique_lock<std::mutex> locker(sync_mutex);
 	std::condition_variable sync_cv;
 	{
 		std::lock_guard<std::mutex> locker(rd_mutex);
-		rd_request.push_back(std::bind(&socket::sync_action, this, 
+		rd_request.push_back(std::bind(&socket::sync_rd_action, this, 
+					reinterpret_cast<char*>(buff), length, std::ref(transfered),
 					std::ref(sync_cv)));
 		if(rdable)
 			rd_worker.active();
 	}
 	sync_cv.wait(locker);
 
-	return read_some(reinterpret_cast<char *>(buff), length);
+	return transfered;
 }
 
 void socket::async_write(const void *buff, size_t length, ocallback ocb){
@@ -131,7 +136,13 @@ void socket::async_read(void *buff, size_t length, icallback icb){
 		rd_worker.active();
 }
 
-void socket::sync_action(std::condition_variable &cv){
+void socket::sync_rd_action(char *buff, size_t length, int &transfered, std::condition_variable &cv){
+	transfered = read_some(buff, length);
+	cv.notify_all();
+}
+
+void socket::sync_wr_action(const char *buff, size_t length, int &transfered, std::condition_variable &cv){
+	transfered = write_some(buff, length);
 	cv.notify_all();
 }
 
@@ -157,13 +168,15 @@ inline int socket::read_some(char *buff, size_t length){
 		cnt += nread;
 	}
 
-	rdable = false;
-
-	if(nread == -1 && errno != EAGAIN){
-		return -1;
+	if(nread > 0){
+		return cnt;
+	}
+	else if(-1 == nread && EAGAIN == errno){
+		rdable = false;
+		return cnt;
 	}
 	else{
-		return cnt;
+		return -1;
 	}
 }
 
@@ -174,15 +187,15 @@ inline int socket::write_some(const char *buff, size_t length){
 		cnt += nwrite;
 	}
 
-	wrable = false;
-
-	if(nwrite == 0){
+	if(nwrite > 0){
+		return cnt;
 	}
-	if(nwrite == -1 && nwrite != EAGAIN){
-		return -1;
+	else if(-1 == nwrite && EAGAIN == nwrite){
+		wrable = false;
+		return cnt;
 	}
 	else{
-		return cnt;
+		return -1;
 	}
 }
 
@@ -200,12 +213,11 @@ void socket::job(std::mutex &mutex, std::list<std::function<void()>> &requests){
 							std::cerr << "[connected] getsockopt failed!" << std::endl;
 							return;
 						}
-						std::cout << "disconnect" << std::endl;
 						return;
 					}
 					callback = requests.front();
 					requests.pop_front();
-					if(callback == nullptr)
+					if(nullptr == callback)
 						return;
 				}
 				callback();
@@ -223,8 +235,6 @@ void socket::job(std::mutex &mutex, std::list<std::function<void()>> &requests){
 				connect_notify.notify_all();
 			}
 			break;
-		default:
-			std::cout << "socket status error!" << std::endl;
 	}
 }
 
@@ -236,6 +246,14 @@ void socket::ievent(){
 void socket::oevent(){
 	wrable = true;
 	wr_worker.active();
+}
+
+void socket::rdhupevent(){
+	unregister_epoll_req();
+	connect_status = PRECONNECT;
+	rdable = false;
+	wrable = false;
+	close();
 }
 
 void socket::eevent(){
@@ -250,4 +268,3 @@ void socket::eevent(){
 		connect_notify.notify_all();
 	}
 }
-

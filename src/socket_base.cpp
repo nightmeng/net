@@ -7,16 +7,24 @@
 
 #include <iostream>
 
-socket_base::socket_base(){
+socket_base::socket_base():epolled(false), sock(-1){
 	sock = ::socket(AF_INET, SOCK_STREAM, 0);
-
-	epollor::instance()->get_epoll()->add_request(this, EPOLLOUT|EPOLLIN|EPOLLET);
+	register_epoll_req();
 	epollor::instance()->get_epoll()->poll();
 }
 
-socket_base::socket_base(int fd):sock(fd){
-	epollor::instance()->get_epoll()->add_request(this, EPOLLOUT|EPOLLIN|EPOLLET);
+socket_base::socket_base(int fd):sock(fd), epolled(false){
+	register_epoll_req();
 	epollor::instance()->get_epoll()->poll();
+}
+
+socket_base::~socket_base(){
+	unregister_epoll_req();
+	close();
+}
+
+int socket_base::fd(){
+	return sock;
 }
 
 bool socket_base::set_noblock(){
@@ -32,12 +40,28 @@ bool socket_base::set_noblock(){
 	return true;
 }
 
-socket_base::~socket_base(){
-	epollor::instance()->get_epoll()->del_request(this);
-	close(sock);
-	std::cout << "~socket_base" << std::endl;
+void socket_base::register_epoll_req(){
+	if(!epolled){
+		epollor::instance()->get_epoll()->add_request(
+				this, EPOLLHUP|EPOLLRDHUP|EPOLLPRI|EPOLLOUT|EPOLLIN|EPOLLET);
+		epolled = true;
+	}
 }
 
-int socket_base::fd(){
+void socket_base::unregister_epoll_req(){
+	if(epolled){
+		epollor::instance()->get_epoll()->del_request(this);
+		epolled = false;
+	}
+}
+
+int socket_base::open(){
+	sock = ::socket(AF_INET, SOCK_STREAM, 0);
 	return sock;
+}
+
+void socket_base::close(){
+	unregister_epoll_req();
+	::close(sock);
+	sock = -1;
 }
