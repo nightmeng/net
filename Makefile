@@ -22,7 +22,7 @@ bin/http/httptest:examples/http/httptest.o lib/libnet.a
 	g++ -o $@ $< -L ./lib -lnet -pthread
 
 %.o:%.cpp
-	g++ -c -o $@ $< -std=c++0x -I ./include
+	g++ -c -o $@ $< -std=c++0x -I ./include -I ./include
 
 
 .PHONY:clean
