@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <cstring>
+#include <unistd.h>
 
 #include <iostream>
 
@@ -93,16 +94,17 @@ int socket::sync_write(const void *buff, size_t length){
 	int transfered = 0;
 	std::mutex sync_mutex;
 	std::unique_lock<std::mutex> locker(sync_mutex);
+	bool processed = false;
 	std::condition_variable cv;
 	{
 		std::lock_guard<std::mutex> scope_locker(wr_mutex);
 		wr_request.push_back(std::bind(&socket::sync_wr_action, this, 
 					reinterpret_cast<const char*>(buff), length, std::ref(transfered),
-					std::ref(cv)));
+					std::ref(cv), std::ref(processed)));
 		if(wrable)
 			wr_worker.active();
 	}
-	cv.wait(locker);
+	cv.wait(locker, [&processed]()->bool{return processed;});
 	
 	return transfered;
 }
@@ -111,16 +113,17 @@ int socket::sync_read(void *buff, size_t length){
 	int transfered = 0;
 	std::mutex sync_mutex;
 	std::unique_lock<std::mutex> locker(sync_mutex);
+	bool processed = false;
 	std::condition_variable sync_cv;
 	{
 		std::lock_guard<std::mutex> scope_locker(rd_mutex);
 		rd_request.push_back(std::bind(&socket::sync_rd_action, this, 
 					reinterpret_cast<char*>(buff), length, std::ref(transfered),
-					std::ref(sync_cv)));
+					std::ref(sync_cv), std::ref(processed)));
 		if(rdable)
 			rd_worker.active();
 	}
-	sync_cv.wait(locker);
+	sync_cv.wait(locker, [&processed]()->bool{return processed;});
 
 	return transfered;
 }
@@ -143,13 +146,15 @@ void socket::async_read(void *buff, size_t length, icallback icb){
 		rd_worker.active();
 }
 
-void socket::sync_rd_action(char *buff, size_t length, int &transfered, std::condition_variable &cv){
+void socket::sync_rd_action(char *buff, size_t length, int &transfered, std::condition_variable &cv, bool &processed){
 	transfered = read_some(buff, length);
+	processed = true;
 	cv.notify_all();
 }
 
-void socket::sync_wr_action(const char *buff, size_t length, int &transfered, std::condition_variable &cv){
+void socket::sync_wr_action(const char *buff, size_t length, int &transfered, std::condition_variable &cv, bool &processed){
 	transfered = write_some(buff, length);
+	processed = true;
 	cv.notify_all();
 }
 

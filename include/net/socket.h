@@ -38,9 +38,9 @@ class socket : public socket_base{
 		void job(bool is_read);
 
 		void sync_rd_action(char *buff, size_t length, int &transfered,
-				std::condition_variable &cv);
+				std::condition_variable &cv, bool &processed);
 		void sync_wr_action(const char *buff, size_t length, int &transfered, 
-				std::condition_variable &cv);
+				std::condition_variable &cv, bool &processed);
 
 		void async_rd_action(char *buff, size_t length, icallback icb);
 		void async_wr_action(const char *buff, size_t length, ocallback ocb);
