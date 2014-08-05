@@ -45,6 +45,8 @@ class socket : public socket_base{
 		void async_rd_action(char *buff, size_t length, icallback icb);
 		void async_wr_action(const char *buff, size_t length, ocallback ocb);
 
+		void sync_conn_action(std::condition_variable &cv);
+
 		int read_some(char *buff, size_t length);
 		int write_some(const char *buff, size_t length);
 	private:
@@ -53,9 +55,11 @@ class socket : public socket_base{
 
 		std::mutex rd_mutex;
 		std::mutex wr_mutex;
+		std::mutex conn_mutex;
 
 		std::list<std::function<void()>> rd_request;
 		std::list<std::function<void()>> wr_request;
+		std::list<std::function<void()>> conn_request;
 
 		std::shared_ptr<struct sockaddr_in> addr;
 

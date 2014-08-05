@@ -68,6 +68,17 @@ bool socket::connect(const std::string &ip, unsigned short port){
 				sizeof(struct sockaddr))){
 		if(EINPROGRESS == errno){
 			connect_status = CONNECTING;
+			{
+				std::lock_guard<std::mutex> locker(conn_mutex);
+				conn_request.push_back(
+						std::bind(&socket::sync_conn_action, this, std::ref(connect_notify)));
+			}
+			if(rdable)
+				rd_worker.active();
+			else if(wrable){
+				wr_worker.active();
+			}
+
 			connect_notify.wait(locker);
 			return CONNECTED == connect_status;
 		}
@@ -84,7 +95,7 @@ int socket::sync_write(const void *buff, size_t length){
 	std::unique_lock<std::mutex> locker(sync_mutex);
 	std::condition_variable cv;
 	{
-		std::lock_guard<std::mutex> locker(wr_mutex);
+		std::lock_guard<std::mutex> scope_locker(wr_mutex);
 		wr_request.push_back(std::bind(&socket::sync_wr_action, this, 
 					reinterpret_cast<const char*>(buff), length, std::ref(transfered),
 					std::ref(cv)));
@@ -102,7 +113,7 @@ int socket::sync_read(void *buff, size_t length){
 	std::unique_lock<std::mutex> locker(sync_mutex);
 	std::condition_variable sync_cv;
 	{
-		std::lock_guard<std::mutex> locker(rd_mutex);
+		std::lock_guard<std::mutex> scope_locker(rd_mutex);
 		rd_request.push_back(std::bind(&socket::sync_rd_action, this, 
 					reinterpret_cast<char*>(buff), length, std::ref(transfered),
 					std::ref(sync_cv)));
@@ -156,6 +167,17 @@ void socket::async_wr_action(const char *buff, size_t length, ocallback ocb){
 			std::bind(ocb, ec, transfered));
 }
 
+void socket::sync_conn_action(std::condition_variable &cv){
+	int error;
+	socklen_t len = sizeof(error);
+	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+		std::cerr << "[preconnect] getsockopt failed!" << std::endl;
+		return;
+	}
+	connect_status = (0 == error)?CONNECTED:CONNECTERR;
+	connect_notify.notify_all();
+}
+
 inline int socket::read_some(char *buff, size_t length){
 	int cnt = 0;
 	int nread = 0;
@@ -196,42 +218,46 @@ inline int socket::write_some(const char *buff, size_t length){
 }
 
 void socket::job(bool is_read){
-	auto &mutex = is_read?rd_mutex:wr_mutex;
-	auto &requests = is_read?rd_request:wr_request;
-	auto &status = is_read?rdable:wrable;
+	std::mutex *mutex = nullptr;
+	std::list<std::function<void()>> *requests = nullptr;
+	bool *status = nullptr;
 
-	while(status){
-		switch(connect_status){
-			case CONNECTED:
-				{
-					std::function<void()> callback;
-					{
-						std::lock_guard<std::mutex> locker(mutex);
-						if(requests.empty()){
-							return;
-						}
-						callback = requests.front();
-						requests.pop_front();
-						if(nullptr == callback)
-							return;
-					}
-					callback();
-				}
-				break;
-			case CONNECTING:
-				{
-					int error;
-					socklen_t len = sizeof(error);
-					if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-						std::cerr << "[preconnect] getsockopt failed!" << std::endl;
-						return;
-					}
-					connect_status = (0 == errno)?CONNECTED:CONNECTERR;
-					connect_notify.notify_all();
-				}
-				break;
-		}
+	switch(connect_status){
+		case CONNECTING:
+			mutex = &conn_mutex;
+			requests = &conn_request;
+			break;
+		case CONNECTED:
+			if(is_read){
+				mutex = &rd_mutex;
+				requests = &rd_request;
+				status = &rdable;
+			}
+			else{
+				mutex = &wr_mutex;
+				requests = &wr_request;
+				status = &wrable;
+			}
+			break;
+		default:
+			return;
 	}
+
+	do{
+		std::function<void()> callback;
+		{
+			std::lock_guard<std::mutex> locker(*mutex);
+			if(requests->empty()){
+				return;
+			}
+			callback = requests->front();
+			requests->pop_front();
+			if(nullptr == callback)
+				return;
+		}
+		callback();
+	}
+	while(nullptr != status && *status);
 }
 
 void socket::ievent(){
