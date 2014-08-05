@@ -64,6 +64,7 @@ bool socket::connect(const std::string &ip, unsigned short port){
 	std::unique_lock<std::mutex> locker(mutex);
 
 	connect_status = PRECONNECT;
+	bool processed = false;
 	if(-1 == ::connect(sock, 
 				reinterpret_cast<struct sockaddr*>(addr.get()), 
 				sizeof(struct sockaddr))){
@@ -72,15 +73,16 @@ bool socket::connect(const std::string &ip, unsigned short port){
 			{
 				std::lock_guard<std::mutex> locker(conn_mutex);
 				conn_request.push_back(
-						std::bind(&socket::sync_conn_action, this, std::ref(connect_notify)));
+						std::bind(&socket::sync_conn_action, this, std::ref(connect_notify), std::ref(processed)));
 			}
-			if(rdable)
+			if(rdable){
 				rd_worker.active();
+			}
 			else if(wrable){
 				wr_worker.active();
 			}
 
-			connect_notify.wait(locker);
+			connect_notify.wait(locker, [&processed]()->bool{return processed;});
 			return CONNECTED == connect_status;
 		}
 		connect_status = CONNECTERR;
@@ -88,6 +90,44 @@ bool socket::connect(const std::string &ip, unsigned short port){
 	}
 	connect_status = CONNECTED;
 	return true;
+}
+
+void socket::async_connect(const std::string &ip, unsigned short port,
+		ccallback ccb){
+	if(-1 == sock){
+		open();
+		register_epoll_req();
+	}
+
+	if(!update_addr(ip, port)){
+		return;
+	}
+	
+	connect_status = PRECONNECT;
+	if(-1 == ::connect(sock, 
+				reinterpret_cast<struct sockaddr*>(addr.get()), 
+				sizeof(struct sockaddr))){
+		if(EINPROGRESS == errno){
+			connect_status = CONNECTING;
+			std::lock_guard<std::mutex> locker(conn_mutex);
+			conn_request.push_back(
+					std::bind(&socket::async_conn_action, this, ccb));
+			if(rdable){
+				rd_worker.active();
+			}
+			else if(wrable){
+				wr_worker.active();
+			}
+		}
+		else{
+			epollor::instance()->get_factory()->arrange(
+					std::bind(ccb, errno));
+		}
+	}
+	else{
+		epollor::instance()->get_factory()->arrange(
+				std::bind(ccb, 0));
+	}
 }
 
 int socket::sync_write(const void *buff, size_t length){
@@ -161,6 +201,7 @@ void socket::sync_wr_action(const char *buff, size_t length, int &transfered, st
 void socket::async_rd_action(char *buff, size_t length, icallback icb){
 	int transfered = read_some(buff, length);
 	int ec = 0;
+	std::cout << "2" << std::endl;
 	epollor::instance()->get_factory()->arrange(
 			std::bind(icb, ec, transfered));
 }
@@ -168,19 +209,32 @@ void socket::async_rd_action(char *buff, size_t length, icallback icb){
 void socket::async_wr_action(const char *buff, size_t length, ocallback ocb){
 	int transfered = write_some(buff, length);
 	int ec = 0;
+	std::cout << "1" << std::endl;
 	epollor::instance()->get_factory()->arrange(
 			std::bind(ocb, ec, transfered));
 }
 
-void socket::sync_conn_action(std::condition_variable &cv){
+void socket::sync_conn_action(std::condition_variable &cv, bool &processed){
 	int error;
 	socklen_t len = sizeof(error);
 	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-		std::cerr << "[preconnect] getsockopt failed!" << std::endl;
 		return;
 	}
 	connect_status = (0 == error)?CONNECTED:CONNECTERR;
+	processed = true;
 	connect_notify.notify_all();
+}
+
+void socket::async_conn_action(ccallback ccb){
+	int error;
+	socklen_t len = sizeof(error);
+	std::cout << "3" << std::endl;
+	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+		return;
+	}
+	connect_status = (0 == error)?CONNECTED:CONNECTERR;
+	epollor::instance()->get_factory()->arrange(
+			std::bind(ccb, error));
 }
 
 inline int socket::read_some(char *buff, size_t length){
@@ -285,13 +339,17 @@ void socket::rdhupevent(){
 
 void socket::eevent(){
 	if(CONNECTING == connect_status){
-		int error;
-		socklen_t len = sizeof(error);
-		if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-			std::cerr << "[preconnect] getsockopt failed!" << std::endl;
-			return;
+		std::function<void()> callback;
+		{
+			std::lock_guard<std::mutex> locker(conn_mutex);
+			if(conn_request.empty()){
+				return;
+			}
+			callback = conn_request.front();
+			conn_request.pop_front();
+			if(nullptr == callback)
+				return;
 		}
-		connect_status = CONNECTERR;
-		connect_notify.notify_all();
+		callback();
 	}
 }

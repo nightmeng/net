@@ -52,8 +52,8 @@ void epoll::poll_service(){
 				continue;
 			}
 
-			if(ev.events & EPOLLHUP){
-				sock->hupevent();
+			if(ev.events & EPOLLRDHUP){
+				sock->rdhupevent();
 			}
 			else{
 				if(ev.events & EPOLLERR){
@@ -65,8 +65,8 @@ void epoll::poll_service(){
 				if(ev.events & EPOLLOUT){
 					sock->oevent();
 				}
-				if(ev.events & EPOLLRDHUP){
-					sock->rdhupevent();
+				if(ev.events & EPOLLHUP){
+					sock->hupevent();
 				}
 				if(ev.events & EPOLLPRI){
 					sock->prievent();

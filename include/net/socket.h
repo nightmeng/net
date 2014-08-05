@@ -15,12 +15,15 @@ class socket : public socket_base{
 	public:
 		typedef std::function<void(int, int)> icallback;
 		typedef std::function<void(int, int)> ocallback;
+		typedef std::function<void(int)> ccallback;
 	public:
 		socket();
 		socket(int fd, std::shared_ptr<struct sockaddr_in> address);
 		~socket();
 
 		bool connect(const std::string &host, unsigned short port);
+		void async_connect(const std::string &host, unsigned short port,
+				ccallback ccb);
 
 		int sync_write(const void *buff, size_t length);
 		int sync_read(void *buff, size_t length);
@@ -45,7 +48,8 @@ class socket : public socket_base{
 		void async_rd_action(char *buff, size_t length, icallback icb);
 		void async_wr_action(const char *buff, size_t length, ocallback ocb);
 
-		void sync_conn_action(std::condition_variable &cv);
+		void sync_conn_action(std::condition_variable &cv, bool &processed);
+		void async_conn_action(ccallback ccb);
 
 		int read_some(char *buff, size_t length);
 		int write_some(const char *buff, size_t length);
