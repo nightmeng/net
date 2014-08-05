@@ -35,7 +35,7 @@ class socket : public socket_base{
 		virtual void rdhupevent();
 	private:
 		bool update_addr(const std::string &ip, unsigned short port);
-		void job(std::mutex &mutex, std::list<std::function<void()>> &requests);
+		void job(bool is_read);
 
 		void sync_rd_action(char *buff, size_t length, int &transfered,
 				std::condition_variable &cv);

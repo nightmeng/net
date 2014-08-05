@@ -12,19 +12,15 @@
 
 socket::socket():socket_base(), connect_status(PRECONNECT), wrable(false), rdable(false){
 	set_noblock();
-	rd_worker.task(std::bind(&socket::job, this, std::ref(rd_mutex), 
-				std::ref(rd_request)));
-	wr_worker.task(std::bind(&socket::job, this, std::ref(wr_mutex),
-				std::ref(wr_request)));
+	rd_worker.task(std::bind(&socket::job, this, true));
+	wr_worker.task(std::bind(&socket::job, this, false));
 }
 
 socket::socket(int fd, std::shared_ptr<struct sockaddr_in> address)
 	:socket_base(fd), addr(address), wrable(false), rdable(false), connect_status(CONNECTED){
 	set_noblock();
-	rd_worker.task(std::bind(&socket::job, this, std::ref(rd_mutex), 
-				std::ref(rd_request)));
-	wr_worker.task(std::bind(&socket::job, this, std::ref(wr_mutex),
-				std::ref(wr_request)));
+	rd_worker.task(std::bind(&socket::job, this, true));
+	wr_worker.task(std::bind(&socket::job, this, false));
 }
 
 socket::~socket(){}
@@ -199,42 +195,41 @@ inline int socket::write_some(const char *buff, size_t length){
 	}
 }
 
-void socket::job(std::mutex &mutex, std::list<std::function<void()>> &requests){
-	switch(connect_status){
-		case CONNECTED:
-			{
-				std::function<void()> callback;
+void socket::job(bool is_read){
+	auto &mutex = is_read?rd_mutex:wr_mutex;
+	auto &requests = is_read?rd_request:wr_request;
+	auto &status = is_read?rdable:wrable;
+	while(status){
+		switch(connect_status){
+			case CONNECTED:
 				{
-					std::lock_guard<std::mutex> locker(mutex);
-					if(requests.empty()){
-						int error;
-						socklen_t len = sizeof(error);
-						if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-							std::cerr << "[connected] getsockopt failed!" << std::endl;
+					std::function<void()> callback;
+					{
+						std::lock_guard<std::mutex> locker(mutex);
+						if(requests.empty()){
 							return;
 						}
+						callback = requests.front();
+						requests.pop_front();
+						if(nullptr == callback)
+							return;
+					}
+					callback();
+				}
+				break;
+			case CONNECTING:
+				{
+					int error;
+					socklen_t len = sizeof(error);
+					if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
+						std::cerr << "[preconnect] getsockopt failed!" << std::endl;
 						return;
 					}
-					callback = requests.front();
-					requests.pop_front();
-					if(nullptr == callback)
-						return;
+					connect_status = (0 == errno)?CONNECTED:CONNECTERR;
+					connect_notify.notify_all();
 				}
-				callback();
-			}
-			break;
-		case CONNECTING:
-			{
-				int error;
-				socklen_t len = sizeof(error);
-				if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
-					std::cerr << "[preconnect] getsockopt failed!" << std::endl;
-					return;
-				}
-				connect_status = (0 == errno)?CONNECTED:CONNECTERR;
-				connect_notify.notify_all();
-			}
-			break;
+				break;
+		}
 	}
 }
 
