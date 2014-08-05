@@ -3,8 +3,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-#include <iostream>
-
 epoll::epoll(){
 	fd = ::epoll_create(20000);
 }

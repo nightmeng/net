@@ -1,7 +1,5 @@
 #include <net/worker.h>
 
-#include <iostream>
-
 worker::worker():stop(false), onced(true){
 	mutex.lock();
 	stop = false;

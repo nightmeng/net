@@ -5,8 +5,6 @@
 #include <netdb.h>
 #include <cstring>
 
-#include <iostream>
-
 acceptor::acceptor():status(false){
 	set_noblock();
 	epollor::instance()->get_epoll()->poll();
