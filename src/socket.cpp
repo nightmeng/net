@@ -199,6 +199,7 @@ void socket::job(bool is_read){
 	auto &mutex = is_read?rd_mutex:wr_mutex;
 	auto &requests = is_read?rd_request:wr_request;
 	auto &status = is_read?rdable:wrable;
+
 	while(status){
 		switch(connect_status){
 			case CONNECTED:
