@@ -7,12 +7,18 @@
 
 class epollor{
 	public:
+		~epollor();
+
 		static std::shared_ptr<epollor> instance();
 		epoll* get_epoll();
 		factory *get_factory();
-		~epollor();
+
 	private:
+		epollor(const epollor&) = delete;
+		epollor& operator=(const epollor&) = delete;
 		epollor();
+
+	private:
 		std::shared_ptr<epoll> ep;
 		std::shared_ptr<factory> p;
 		static std::shared_ptr<epollor> ist;
