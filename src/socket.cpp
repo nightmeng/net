@@ -222,6 +222,8 @@ void socket::sync_conn_action(std::condition_variable &cv, bool &processed){
 	}
 	connect_status = (0 == error)?CONNECTED:CONNECTERR;
 	processed = true;
+	//
+	wrable = true;
 	connect_notify.notify_all();
 }
 
@@ -233,6 +235,8 @@ void socket::async_conn_action(ccallback ccb){
 		return;
 	}
 	connect_status = (0 == error)?CONNECTED:CONNECTERR;
+	//
+	wrable = true;
 	epollor::instance()->get_factory()->arrange(
 			std::bind(ccb, error));
 }
@@ -267,7 +271,8 @@ inline int socket::write_some(const char *buff, size_t length){
 	if(nwrite > 0){
 		return cnt;
 	}
-	else if(-1 == nwrite && EAGAIN == nwrite){
+	else if(-1 == nwrite && EAGAIN == errno){
+		std::cout << "errno = " << errno << " nwrite = " << nwrite << std::endl;
 		wrable = false;
 		return cnt;
 	}
@@ -302,7 +307,7 @@ void socket::job(bool is_read){
 			return;
 	}
 
-	do{
+	//while(nullptr != status && *status){
 		std::function<void()> callback;
 		{
 			std::lock_guard<std::mutex> locker(*mutex);
@@ -315,17 +320,18 @@ void socket::job(bool is_read){
 				return;
 		}
 		callback();
-	}
-	while(nullptr != status && *status);
+	//}
 }
 
 void socket::ievent(){
-	rdable = true;
+	rdable = (CONNECTED == connect_status);
+	std::cout << "in" << rdable << std::endl;
 	rd_worker.active();
 }
 
 void socket::oevent(){
-	wrable = true;
+	wrable = (CONNECTED == connect_status);
+	std::cout << "out " << wrable << std::endl;
 	wr_worker.active();
 }
 
