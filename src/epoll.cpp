@@ -79,7 +79,9 @@ void epoll::poll_service(){
 void epoll::interrupt(){
 	if(nullptr != service){
 		polling = false;
-		service->join();
+		if(service->joinable()){
+			service->join();
+		}
 		service = nullptr;
 	}
 }

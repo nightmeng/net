@@ -14,7 +14,9 @@ worker::~worker(){
 void worker::interrupt(){
 	if(nullptr != thread){
 		stop = true;
-		thread->join();
+		if(thread->joinable()){
+			thread->join();
+		}
 		thread = nullptr;
 	}
 }
