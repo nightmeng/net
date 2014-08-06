@@ -200,16 +200,14 @@ void socket::sync_wr_action(const char *buff, size_t length, int &transfered, st
 
 void socket::async_rd_action(char *buff, size_t length, icallback icb){
 	int transfered = read_some(buff, length);
-	int ec = 0;
-	std::cout << "2" << std::endl;
+	int ec = (-1 == transfered)?0:errno;
 	epollor::instance()->get_factory()->arrange(
 			std::bind(icb, ec, transfered));
 }
 
 void socket::async_wr_action(const char *buff, size_t length, ocallback ocb){
 	int transfered = write_some(buff, length);
-	int ec = 0;
-	std::cout << "1" << std::endl;
+	int ec = (-1 == transfered)?0:errno;
 	epollor::instance()->get_factory()->arrange(
 			std::bind(ocb, ec, transfered));
 }
@@ -230,7 +228,6 @@ void socket::sync_conn_action(std::condition_variable &cv, bool &processed){
 void socket::async_conn_action(ccallback ccb){
 	int error;
 	socklen_t len = sizeof(error);
-	std::cout << "3" << std::endl;
 	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &error, &len) < 0){
 		return;
 	}

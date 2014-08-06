@@ -14,7 +14,7 @@ void handle_read(int ec, int transfered, socket &sock){
 int main(){
 	socket sock;
 
-#if 0
+#if 1
 	if(!sock.connect("www.baidu.com", 80)){
 		std::cout << "connected failed" << std::endl;
 		return -1;
