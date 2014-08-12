@@ -1,5 +1,6 @@
 #include <net/socket.h>
-#include <net/epollor.h>
+#include <net/singleton.h>
+#include <net/scheduler.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -149,15 +150,13 @@ void socket::sync_wr_action(const char *buff, size_t length, int &transfered, st
 void socket::async_rd_action(char *buff, size_t length, icallback icb){
 	int transfered = read_some(buff, length);
 	int ec = 0;
-	epollor::instance()->get_factory()->arrange(
-			std::bind(icb, ec, transfered));
+	singleton<scheduler>::instance()->arrange(std::bind(icb, ec, transfered));
 }
 
 void socket::async_wr_action(const char *buff, size_t length, ocallback ocb){
 	int transfered = write_some(buff, length);
 	int ec = 0;
-	epollor::instance()->get_factory()->arrange(
-			std::bind(ocb, ec, transfered));
+	singleton<scheduler>::instance()->arrange(std::bind(ocb, ec, transfered));
 }
 
 inline int socket::read_some(char *buff, size_t length){

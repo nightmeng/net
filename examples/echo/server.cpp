@@ -30,7 +30,7 @@ int main(){
 	a.accept([](int ec, std::shared_ptr<socket> sock){
 		std::cout << "accept a connection" << std::endl;
 		sock->async_read(buff, 2048, std::bind(handle_read, std::placeholders::_1,
-					std::placeholders::_2, sock));
+		std::placeholders::_2, sock));
 	});
 
 	char c;

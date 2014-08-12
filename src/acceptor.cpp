@@ -1,5 +1,6 @@
 #include <net/acceptor.h>
-#include <net/epollor.h>
+#include <net/singleton.h>
+#include <net/scheduler.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -9,7 +10,6 @@
 
 acceptor::acceptor():status(false){
 	set_noblock();
-	epollor::instance()->get_epoll()->poll();
 }
 
 acceptor::~acceptor(){
@@ -50,15 +50,13 @@ void acceptor::ievent(){
 				&len);
 		
 		if(fd > 0){
-			epollor::instance()->get_factory()->arrange(
-					std::bind(acb, 0, std::shared_ptr<class socket>(
+			singleton<scheduler>::instance()->arrange(std::bind(acb, 0, std::shared_ptr<class socket>(
 							new class socket(fd, addr))));
 		}
 		else{
 			if(errno != EAGAIN && errno != ECONNABORTED && errno != EPROTO
 					&& errno != EINTR){
-				epollor::instance()->get_factory()->arrange(
-						std::bind(acb, errno, nullptr));
+				singleton<scheduler>::instance()->arrange(std::bind(acb, errno, nullptr));
 				return;
 			}
 			else{

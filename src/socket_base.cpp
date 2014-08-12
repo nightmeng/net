@@ -1,5 +1,6 @@
 #include <net/socket_base.h>
-#include <net/epollor.h>
+#include <net/singleton.h>
+#include <net/epoll.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -10,12 +11,12 @@
 socket_base::socket_base():epolled(false), sock(-1){
 	sock = ::socket(AF_INET, SOCK_STREAM, 0);
 	register_epoll_req();
-	epollor::instance()->get_epoll()->poll();
+	singleton<epoll>::instance()->poll();
 }
 
 socket_base::socket_base(int fd):sock(fd), epolled(false){
 	register_epoll_req();
-	epollor::instance()->get_epoll()->poll();
+	singleton<epoll>::instance()->poll();
 }
 
 socket_base::~socket_base(){
@@ -28,6 +29,9 @@ int socket_base::fd(){
 }
 
 bool socket_base::set_noblock(){
+	if(-1 == sock){
+		return false;
+	}
 	int flags = fcntl(sock, F_GETFL, 0);
 	if(flags < 0){
 		return false;
@@ -41,16 +45,22 @@ bool socket_base::set_noblock(){
 }
 
 void socket_base::register_epoll_req(){
+	if(-1 == sock){
+		return;
+	}
 	if(!epolled){
-		epollor::instance()->get_epoll()->add_request(
+		singleton<epoll>::instance()->add_request(
 				this, EPOLLHUP|EPOLLRDHUP|EPOLLPRI|EPOLLOUT|EPOLLIN|EPOLLET);
 		epolled = true;
 	}
 }
 
 void socket_base::unregister_epoll_req(){
+	if(-1 == sock){
+		return;
+	}
 	if(epolled){
-		epollor::instance()->get_epoll()->del_request(this);
+		singleton<epoll>::instance()->del_request(this);
 		epolled = false;
 	}
 }
