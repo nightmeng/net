@@ -6,8 +6,6 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 
-#include <iostream>
-
 socket_base::socket_base():epolled(false), sock(-1){
 	sock = ::socket(AF_INET, SOCK_STREAM, 0);
 	register_epoll_req();

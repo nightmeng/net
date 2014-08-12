@@ -14,7 +14,7 @@ bool scheduler::arrange(std::function<void()> proc){
 		}
 	}
 
-	if(workers.size() < 20000){
+	if(workers.size() < 60000){
 		std::shared_ptr<worker> w(new worker());
 		w->task_once(proc);
 		w->active();

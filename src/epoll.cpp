@@ -3,8 +3,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 
-#include <iostream>
-
 epoll::epoll(){
 	fd = ::epoll_create(20000);
 }
@@ -54,8 +52,8 @@ void epoll::poll_service(){
 				continue;
 			}
 
-			if(ev.events & EPOLLHUP){
-				sock->hupevent();
+			if(ev.events & EPOLLRDHUP){
+				sock->rdhupevent();
 			}
 			else{
 				if(ev.events & EPOLLERR){
@@ -67,8 +65,8 @@ void epoll::poll_service(){
 				if(ev.events & EPOLLOUT){
 					sock->oevent();
 				}
-				if(ev.events & EPOLLRDHUP){
-					sock->rdhupevent();
+				if(ev.events & EPOLLHUP){
+					sock->hupevent();
 				}
 				if(ev.events & EPOLLPRI){
 					sock->prievent();
@@ -81,7 +79,9 @@ void epoll::poll_service(){
 void epoll::interrupt(){
 	if(nullptr != service){
 		polling = false;
-		service->join();
+		if(service->joinable()){
+			service->join();
+		}
 		service = nullptr;
 	}
 }
