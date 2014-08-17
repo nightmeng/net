@@ -200,12 +200,25 @@ void socket::sync_wr_action(const char *buff, size_t length, int &transfered, st
 void socket::async_rd_action(char *buff, size_t length, icallback icb){
 	int transfered = read_some(buff, length);
 	int ec = 0;
+	if(transfered == -1){
+		socklen_t len = sizeof(ec);
+		if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &ec, &len) < 0){
+			//
+		}
+	}
 	singleton<scheduler>::instance()->arrange(std::bind(icb, ec, transfered));
 }
 
 void socket::async_wr_action(const char *buff, size_t length, ocallback ocb){
 	int transfered = write_some(buff, length);
 	int ec = 0;
+	if(transfered == -1){
+		socklen_t len = sizeof(ec);
+		if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &ec, &len) < 0){
+			//
+		}
+	}
+
 	singleton<scheduler>::instance()->arrange(std::bind(ocb, ec, transfered));
 }
 
@@ -217,7 +230,6 @@ void socket::sync_conn_action(std::condition_variable &cv, bool &processed){
 	}
 	connect_status = (0 == error)?CONNECTED:CONNECTERR;
 	processed = true;
-	//
 	wrable = true;
 	connect_notify.notify_all();
 }
@@ -229,7 +241,6 @@ void socket::async_conn_action(ccallback ccb){
 		return;
 	}
 	connect_status = (0 == error)?CONNECTED:CONNECTERR;
-	//
 	wrable = true;
 	singleton<scheduler>::instance()->arrange(std::bind(ccb, error));
 }
@@ -276,7 +287,6 @@ inline int socket::write_some(const char *buff, size_t length){
 void socket::job(bool is_read){
 	std::mutex *mutex = nullptr;
 	std::list<std::function<void()>> *requests = nullptr;
-	bool *status = nullptr;
 
 	switch(connect_status){
 		case CONNECTING:
@@ -287,32 +297,28 @@ void socket::job(bool is_read){
 			if(is_read){
 				mutex = &rd_mutex;
 				requests = &rd_request;
-				status = &rdable;
 			}
 			else{
 				mutex = &wr_mutex;
 				requests = &wr_request;
-				status = &wrable;
 			}
 			break;
 		default:
 			return;
 	}
 
-	//while(nullptr != status && *status){
-		std::function<void()> callback;
-		{
-			std::lock_guard<std::mutex> locker(*mutex);
-			if(requests->empty()){
-				return;
-			}
-			callback = requests->front();
-			requests->pop_front();
-			if(nullptr == callback)
-				return;
+	std::function<void()> callback;
+	{
+		std::lock_guard<std::mutex> locker(*mutex);
+		if(requests->empty()){
+			return;
 		}
-		callback();
-	//}
+		callback = requests->front();
+		requests->pop_front();
+		if(nullptr == callback)
+			return;
+	}
+	callback();
 }
 
 void socket::ievent(){
